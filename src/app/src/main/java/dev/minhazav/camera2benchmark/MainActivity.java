@@ -4,6 +4,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
 
+import dev.minhazav.camera2benchmark.viewpager.MainViewPagerFragment;
+
 public class MainActivity extends AppCompatActivity {
 
     @Override
@@ -13,7 +15,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.container, MainFragment.create())
+                    .replace(R.id.container, MainViewPagerFragment.create())
                     .commit();
         }
     }
