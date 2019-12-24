@@ -13,6 +13,7 @@ import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.CaptureResult;
 import android.hardware.camera2.TotalCaptureResult;
@@ -97,6 +98,14 @@ public class MainFragment extends Fragment
                                 "Image resolution: %d X %d",
                                 newImage.getWidth(),
                                 newImage.getHeight()));
+
+                        MainFragment.this.getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                startButton.setEnabled(true);
+                                startTime = -1;
+                            }
+                        });
                     } else {
                         log("Error: startTime not available.");
                     }
@@ -108,7 +117,7 @@ public class MainFragment extends Fragment
             MainFragment.this.getActivity().runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    log(message);
+                    MainFragment.this.log(message);
                 }
             });
         }
@@ -156,8 +165,7 @@ public class MainFragment extends Fragment
                 case STATE_WAITING_LOCK: {
                     Integer afState = result.get(CaptureResult.CONTROL_AF_STATE);
                     if (afState == null) {
-                        // TODO(mebjas)
-                        // captureStillPicture();
+                        capture();
                     } else if (CaptureResult.CONTROL_AF_STATE_FOCUSED_LOCKED == afState ||
                             CaptureResult.CONTROL_AF_STATE_NOT_FOCUSED_LOCKED == afState) {
                         // CONTROL_AE_STATE can be null on some devices
@@ -165,11 +173,9 @@ public class MainFragment extends Fragment
                         if (aeState == null ||
                                 aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
                             mState = STATE_PICTURE_TAKEN;
-                            // TODO(mebjas)
-                            // captureStillPicture();
+                            capture();
                         } else {
-                            // TODO(mebjas)
-                            // runPrecaptureSequence();
+                            precapture();
                         }
                     }
                     break;
@@ -189,8 +195,7 @@ public class MainFragment extends Fragment
                     Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
                     if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
                         mState = STATE_PICTURE_TAKEN;
-                        // TODO(mebjas)
-                        // captureStillPicture();
+                        capture();
                     }
                     break;
                 }
@@ -211,6 +216,40 @@ public class MainFragment extends Fragment
             process(result);
         }
 
+        private void capture() {
+            try {
+                log("calling captureStillPicture");
+                final long st = System.currentTimeMillis();
+                captureStillPicture();
+                log(String.format(
+                        "captureStillPicture: %d",
+                        System.currentTimeMillis() - st));
+            } catch (Exception ex) {
+                log("some exception: " +ex.getMessage());
+            }
+        }
+
+        private void precapture() {
+            try {
+                log("calling runPrecaptureSequence");
+                final long st = System.currentTimeMillis();
+                runPrecaptureSequence();
+                log(String.format(
+                        "runPrecaptureSequence: %d",
+                        System.currentTimeMillis() - st));
+            } catch (Exception ex) {
+                log("some exception: " +ex.getMessage());
+            }
+        }
+
+        private void log(final String message) {
+            MainFragment.this.getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    MainFragment.this.log(message);
+                }
+            });
+        }
     };
 
     private final TextureView.SurfaceTextureListener mSurfaceTextureListener
@@ -268,8 +307,10 @@ public class MainFragment extends Fragment
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                startButton.setEnabled(false);
                 startTime = System.currentTimeMillis();
                 log(String.format("Benchmarking started at: %d", startTime));
+                takePicture();
             }
         });
     }
@@ -284,6 +325,24 @@ public class MainFragment extends Fragment
         } else {
             viewfinder.setSurfaceTextureListener(mSurfaceTextureListener);
         }
+    }
+
+    private void takePicture() {
+        log("Taking picture");
+        try {
+            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+                    CameraMetadata.CONTROL_AF_TRIGGER_START);
+            log(String.format(
+                    "AF_Trigger: %d", System.currentTimeMillis() - startTime));
+            mState = STATE_WAITING_LOCK;
+            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
+                    mBackgroundHandler);
+            log(String.format(
+                    "Capture requested: %d", System.currentTimeMillis() - startTime));
+        } catch (Exception ex) {
+            log("Some exception: " +ex.getMessage());
+        }
+
     }
 
     private void setupCamera() {
@@ -459,19 +518,56 @@ public class MainFragment extends Fragment
             super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         }
     }
-
-    /**
-     * Starts a background thread and its {@link Handler}.
-     */
     private void startBackgroundThread() {
         mBackgroundThread = new HandlerThread("CameraBackground");
         mBackgroundThread.start();
         mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
     }
 
-    /**
-     * Compares two {@code Size}s based on their areas.
-     */
+    private void runPrecaptureSequence() throws Exception {
+        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+                CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
+        mState = STATE_WAITING_PRECAPTURE;
+        mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
+                mBackgroundHandler);
+    }
+
+    private void captureStillPicture() throws Exception {
+        final Activity activity = getActivity();
+        if (null == activity || null == mCameraDevice) {
+            return;
+        }
+        // This is the CaptureRequest.Builder that we use to take a picture.
+        final CaptureRequest.Builder captureBuilder =
+                mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+        captureBuilder.addTarget(imageReader.getSurface());
+
+        // Use the same AE and AF modes as the preview.
+        captureBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+        captureBuilder.set(CaptureRequest.CONTROL_AE_MODE,
+                CaptureRequest.FLASH_MODE_OFF);
+
+        // Orientation
+        captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, 0);
+        CameraCaptureSession.CaptureCallback captureCallback
+                = new CameraCaptureSession.CaptureCallback() {
+
+            @Override
+            public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                           @NonNull CaptureRequest request,
+                                           @NonNull TotalCaptureResult result) {
+//                log(String.format(
+//                        "Capture completed: %d",
+//                        System.currentTimeMillis() - startTime));
+            }
+        };
+
+        mCaptureSession.stopRepeating();
+        mCaptureSession.abortCaptures();
+        mCaptureSession.capture(captureBuilder.build(), captureCallback, null);
+    }
+
     static class CompareSizesByArea implements Comparator<Size> {
 
         @Override
@@ -483,9 +579,6 @@ public class MainFragment extends Fragment
 
     }
 
-    /**
-     * Shows an error message dialog.
-     */
     public static class ErrorDialog extends DialogFragment {
 
         private static final String ARG_MESSAGE = "message";
@@ -515,9 +608,6 @@ public class MainFragment extends Fragment
 
     }
 
-    /**
-     * Shows OK/Cancel confirmation dialog about camera permission.
-     */
     public static class ConfirmationDialog extends DialogFragment {
 
         @Override
