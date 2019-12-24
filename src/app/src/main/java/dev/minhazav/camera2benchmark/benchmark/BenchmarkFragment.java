@@ -51,12 +51,12 @@ import java.util.concurrent.TimeUnit;
 /**
  * TODO(mebjas): this class is super experimental and need full refactor.
  */
-public class MainFragment extends Fragment
+public class BenchmarkFragment extends Fragment
     implements ActivityCompat.OnRequestPermissionsResultCallback {
 
     private static final int REQUEST_CAMERA_PERMISSION = 1;
     private static final String FRAGMENT_DIALOG = "dialog";
-    private static final String LOG_TAG = MainFragment.class.getCanonicalName();
+    private static final String LOG_TAG = BenchmarkFragment.class.getCanonicalName();
 
     private static final int STATE_PREVIEW = 0;
     private static final int STATE_WAITING_LOCK = 1;
@@ -102,7 +102,7 @@ public class MainFragment extends Fragment
                                 newImage.getWidth(),
                                 newImage.getHeight()));
 
-                        MainFragment.this.getActivity().runOnUiThread(new Runnable() {
+                        BenchmarkFragment.this.getActivity().runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 startButton.setEnabled(true);
@@ -117,10 +117,10 @@ public class MainFragment extends Fragment
         }
 
         private void log(final String message) {
-            MainFragment.this.getActivity().runOnUiThread(new Runnable() {
+            BenchmarkFragment.this.getActivity().runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    MainFragment.this.log(message);
+                    BenchmarkFragment.this.log(message);
                 }
             });
         }
@@ -246,10 +246,10 @@ public class MainFragment extends Fragment
         }
 
         private void log(final String message) {
-            MainFragment.this.getActivity().runOnUiThread(new Runnable() {
+            BenchmarkFragment.this.getActivity().runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    MainFragment.this.log(message);
+                    BenchmarkFragment.this.log(message);
                 }
             });
         }
@@ -280,12 +280,12 @@ public class MainFragment extends Fragment
 
     };
 
-    public MainFragment() {
+    public BenchmarkFragment() {
         // Required empty public constructor
     }
 
-    public static MainFragment create() {
-        return new MainFragment();
+    public static BenchmarkFragment create() {
+        return new BenchmarkFragment();
     }
 
     @Override
