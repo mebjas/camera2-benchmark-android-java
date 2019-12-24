@@ -48,6 +48,9 @@ import java.util.Comparator;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * TODO(mebjas): this class is super experimental and need full refactor.
+ */
 public class MainFragment extends Fragment
     implements ActivityCompat.OnRequestPermissionsResultCallback {
 
