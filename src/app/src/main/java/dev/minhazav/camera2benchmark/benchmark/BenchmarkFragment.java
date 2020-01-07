@@ -1,4 +1,4 @@
-package dev.minhazav.camera2benchmark;
+package dev.minhazav.camera2benchmark.benchmark;
 
 import android.Manifest;
 import android.app.Activity;
@@ -45,11 +45,15 @@ import android.widget.Toast;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import dev.minhazav.camera2benchmark.R;
+
 /**
  * TODO(mebjas): this class is super experimental and need full refactor.
+ * Most of these are copied concepts from Camera2Basic
  */
 public class BenchmarkFragment extends Fragment
     implements ActivityCompat.OnRequestPermissionsResultCallback {
@@ -57,6 +61,8 @@ public class BenchmarkFragment extends Fragment
     private static final int REQUEST_CAMERA_PERMISSION = 1;
     private static final String FRAGMENT_DIALOG = "dialog";
     private static final String LOG_TAG = BenchmarkFragment.class.getCanonicalName();
+
+    private final ObservableBenchmark observableBenchmark = ObservableBenchmarkImpl.getInstance();
 
     private static final int STATE_PREVIEW = 0;
     private static final int STATE_WAITING_LOCK = 1;
@@ -69,15 +75,15 @@ public class BenchmarkFragment extends Fragment
     private TextView logTextView;
 
     private ImageReader imageReader;
-    private HandlerThread mBackgroundThread;
-    private Handler mBackgroundHandler;
+    private HandlerThread backgroundThread;
+    private Handler backgroundHandler;
     private Size previewSize = new Size(240, 320);
-    private Semaphore mCameraOpenCloseLock = new Semaphore(1);
-    private CaptureRequest.Builder mPreviewRequestBuilder;
-    private CameraDevice mCameraDevice;
-    private CameraCaptureSession mCaptureSession;
-    private CaptureRequest mPreviewRequest;
-    private int mState = STATE_PREVIEW;
+    private Semaphore cameraOpenCloseLock = new Semaphore(1);
+    private CaptureRequest.Builder previewRequestBuilder;
+    private CameraDevice cameraDevice;
+    private CameraCaptureSession captureSession;
+    private CaptureRequest previewRequest;
+    private int state = STATE_PREVIEW;
     private long startTime = -1;
 
     /**
@@ -89,7 +95,7 @@ public class BenchmarkFragment extends Fragment
 
         @Override
         public void onImageAvailable(final ImageReader reader) {
-            mBackgroundHandler.post(new Runnable() {
+            backgroundHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     if (startTime != -1) {
@@ -107,6 +113,8 @@ public class BenchmarkFragment extends Fragment
                             public void run() {
                                 startButton.setEnabled(true);
                                 startTime = -1;
+                                observableBenchmark.notify(
+                                        BenchmarkResultImpl.create(100, new HashMap<>()));
                             }
                         });
                     } else {
@@ -131,23 +139,23 @@ public class BenchmarkFragment extends Fragment
         @Override
         public void onOpened(@NonNull CameraDevice cameraDevice) {
             // This method is called when the camera is opened. We start camera preview here.
-            mCameraOpenCloseLock.release();
-            mCameraDevice = cameraDevice;
+            cameraOpenCloseLock.release();
+            BenchmarkFragment.this.cameraDevice = cameraDevice;
             createCameraPreviewSession();
         }
 
         @Override
         public void onDisconnected(@NonNull CameraDevice cameraDevice) {
-            mCameraOpenCloseLock.release();
+            cameraOpenCloseLock.release();
             cameraDevice.close();
-            mCameraDevice = null;
+            BenchmarkFragment.this.cameraDevice = null;
         }
 
         @Override
         public void onError(@NonNull CameraDevice cameraDevice, int error) {
-            mCameraOpenCloseLock.release();
+            cameraOpenCloseLock.release();
             cameraDevice.close();
-            mCameraDevice = null;
+            BenchmarkFragment.this.cameraDevice = null;
             Activity activity = getActivity();
             if (null != activity) {
                 activity.finish();
@@ -160,7 +168,7 @@ public class BenchmarkFragment extends Fragment
             = new CameraCaptureSession.CaptureCallback() {
 
         private void process(CaptureResult result) {
-            switch (mState) {
+            switch (state) {
                 case STATE_PREVIEW: {
                     // We have nothing to do when the camera preview is working normally.
                     break;
@@ -175,7 +183,7 @@ public class BenchmarkFragment extends Fragment
                         Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
                         if (aeState == null ||
                                 aeState == CaptureResult.CONTROL_AE_STATE_CONVERGED) {
-                            mState = STATE_PICTURE_TAKEN;
+                            state = STATE_PICTURE_TAKEN;
                             capture();
                         } else {
                             precapture();
@@ -189,7 +197,7 @@ public class BenchmarkFragment extends Fragment
                     if (aeState == null ||
                             aeState == CaptureResult.CONTROL_AE_STATE_PRECAPTURE ||
                             aeState == CaptureRequest.CONTROL_AE_STATE_FLASH_REQUIRED) {
-                        mState = STATE_WAITING_NON_PRECAPTURE;
+                        state = STATE_WAITING_NON_PRECAPTURE;
                     }
                     break;
                 }
@@ -197,7 +205,7 @@ public class BenchmarkFragment extends Fragment
                     // CONTROL_AE_STATE can be null on some devices
                     Integer aeState = result.get(CaptureResult.CONTROL_AE_STATE);
                     if (aeState == null || aeState != CaptureResult.CONTROL_AE_STATE_PRECAPTURE) {
-                        mState = STATE_PICTURE_TAKEN;
+                        state = STATE_PICTURE_TAKEN;
                         capture();
                     }
                     break;
@@ -313,6 +321,9 @@ public class BenchmarkFragment extends Fragment
                 startButton.setEnabled(false);
                 startTime = System.currentTimeMillis();
                 log(String.format("Benchmarking started at: %d", startTime));
+
+                observableBenchmark.notify(
+                        BenchmarkResultImpl.create(5, new HashMap<>()));
                 takePicture();
             }
         });
@@ -333,13 +344,13 @@ public class BenchmarkFragment extends Fragment
     private void takePicture() {
         log("Taking picture");
         try {
-            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
+            previewRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER,
                     CameraMetadata.CONTROL_AF_TRIGGER_START);
             log(String.format(
                     "AF_Trigger: %d", System.currentTimeMillis() - startTime));
-            mState = STATE_WAITING_LOCK;
-            mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
-                    mBackgroundHandler);
+            state = STATE_WAITING_LOCK;
+            captureSession.capture(previewRequestBuilder.build(), mCaptureCallback,
+                    backgroundHandler);
             log(String.format(
                     "Capture requested: %d", System.currentTimeMillis() - startTime));
         } catch (Exception ex) {
@@ -391,13 +402,13 @@ public class BenchmarkFragment extends Fragment
             imageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(),
                     ImageFormat.JPEG, /*maxImages*/2);
             imageReader.setOnImageAvailableListener(
-                    mOnImageAvailableListener, mBackgroundHandler);
+                    mOnImageAvailableListener, backgroundHandler);
             log("Image reader configured.");
 
-            if (!mCameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
+            if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("Time out waiting to lock camera opening.");
             }
-            manager.openCamera(backCameraId, mStateCallback, mBackgroundHandler);
+            manager.openCamera(backCameraId, mStateCallback, backgroundHandler);
             log("Open camera requested.");
         } catch (Exception ex) {
             log("Some exception: " + ex.getMessage());
@@ -411,29 +422,29 @@ public class BenchmarkFragment extends Fragment
 
             texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
             Surface surface = new Surface(texture);
-            mPreviewRequestBuilder
-                    = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            mPreviewRequestBuilder.addTarget(surface);
+            previewRequestBuilder
+                    = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            previewRequestBuilder.addTarget(surface);
 
             // Here, we create a CameraCaptureSession for camera preview.
-            mCameraDevice.createCaptureSession(Arrays.asList(surface, imageReader.getSurface()),
+            cameraDevice.createCaptureSession(Arrays.asList(surface, imageReader.getSurface()),
                     new CameraCaptureSession.StateCallback() {
 
                     @Override
                     public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
                         // The camera is already closed
-                        if (null == mCameraDevice) {
+                        if (null == cameraDevice) {
                             return;
                         }
 
                         // When the session is ready, we start displaying the preview.
-                        mCaptureSession = cameraCaptureSession;
+                        captureSession = cameraCaptureSession;
                         try {
-                            mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
+                            previewRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE,
                                     CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
-                            mPreviewRequest = mPreviewRequestBuilder.build();
-                            mCaptureSession.setRepeatingRequest(mPreviewRequest,
-                                    mCaptureCallback, mBackgroundHandler);
+                            previewRequest = previewRequestBuilder.build();
+                            captureSession.setRepeatingRequest(previewRequest,
+                                    mCaptureCallback, backgroundHandler);
                         } catch (Exception ex) {
                             log("Some exception: " +ex.getMessage());
                         }
@@ -453,14 +464,14 @@ public class BenchmarkFragment extends Fragment
 
     private void closeCamera() {
         try {
-            mCameraOpenCloseLock.acquire();
-//            if (null != mCaptureSession) {
-//                mCaptureSession.close();
-//                mCaptureSession = null;
+            cameraOpenCloseLock.acquire();
+//            if (null != captureSession) {
+//                captureSession.close();
+//                captureSession = null;
 //            }
-            if (null != mCameraDevice) {
-                mCameraDevice.close();
-                mCameraDevice = null;
+            if (null != cameraDevice) {
+                cameraDevice.close();
+                cameraDevice = null;
             }
             if (null != imageReader) {
                 imageReader.close();
@@ -469,7 +480,7 @@ public class BenchmarkFragment extends Fragment
         } catch (InterruptedException e) {
             throw new RuntimeException("Interrupted while trying to lock camera closing.", e);
         } finally {
-            mCameraOpenCloseLock.release();
+            cameraOpenCloseLock.release();
         }
     }
 
@@ -522,27 +533,27 @@ public class BenchmarkFragment extends Fragment
         }
     }
     private void startBackgroundThread() {
-        mBackgroundThread = new HandlerThread("CameraBackground");
-        mBackgroundThread.start();
-        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
+        backgroundThread = new HandlerThread("CameraBackground");
+        backgroundThread.start();
+        backgroundHandler = new Handler(backgroundThread.getLooper());
     }
 
     private void runPrecaptureSequence() throws Exception {
-        mPreviewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
+        previewRequestBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER,
                 CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER_START);
-        mState = STATE_WAITING_PRECAPTURE;
-        mCaptureSession.capture(mPreviewRequestBuilder.build(), mCaptureCallback,
-                mBackgroundHandler);
+        state = STATE_WAITING_PRECAPTURE;
+        captureSession.capture(previewRequestBuilder.build(), mCaptureCallback,
+                backgroundHandler);
     }
 
     private void captureStillPicture() throws Exception {
         final Activity activity = getActivity();
-        if (null == activity || null == mCameraDevice) {
+        if (null == activity || null == cameraDevice) {
             return;
         }
         // This is the CaptureRequest.Builder that we use to take a picture.
         final CaptureRequest.Builder captureBuilder =
-                mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+                cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
         captureBuilder.addTarget(imageReader.getSurface());
 
         // Use the same AE and AF modes as the preview.
@@ -566,9 +577,9 @@ public class BenchmarkFragment extends Fragment
             }
         };
 
-        mCaptureSession.stopRepeating();
-        mCaptureSession.abortCaptures();
-        mCaptureSession.capture(captureBuilder.build(), captureCallback, null);
+        captureSession.stopRepeating();
+        captureSession.abortCaptures();
+        captureSession.capture(captureBuilder.build(), captureCallback, null);
     }
 
     static class CompareSizesByArea implements Comparator<Size> {

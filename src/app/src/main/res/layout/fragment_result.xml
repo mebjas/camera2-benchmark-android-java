@@ -1,16 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
+<ScrollView
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="20dp">
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <TextView
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:textSize="24dp"
-        android:textFontWeight="100"
-        android:text="@string/result_fragment_title"
-        android:textAlignment="center"/>
+        android:padding="20dp">
 
-</LinearLayout>
+        <TextView
+            android:id="@+id/result_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:text="@string/result_fragment_title"
+            android:textAlignment="center"/>
+
+        <ImageView
+            android:id="@+id/result_vector"
+            android:layout_width="128sp"
+            android:layout_height="128sp"
+            android:src="@drawable/ic_goal_bold"
+            android:layout_marginTop="50dp"
+            android:layout_gravity="center"/>
+
+        <TextView
+            android:id="@+id/result_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:text="@string/result_fragment_subtitle_na"
+            android:layout_marginTop="20dp"
+            android:textAlignment="center"/>
+
+    </LinearLayout>
+</ScrollView>

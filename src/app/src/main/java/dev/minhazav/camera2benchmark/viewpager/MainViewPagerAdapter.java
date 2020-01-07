@@ -1,7 +1,6 @@
 package dev.minhazav.camera2benchmark.viewpager;
 
 import android.util.Log;
-import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentStatePagerAdapter;
@@ -9,7 +8,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import dev.minhazav.camera2benchmark.MainFragment;
+import dev.minhazav.camera2benchmark.benchmark.BenchmarkFragment;
 import dev.minhazav.camera2benchmark.apiprobe.ApiProbeFragment;
 import dev.minhazav.camera2benchmark.result.ResultFragment;
 
@@ -22,6 +21,7 @@ public class MainViewPagerAdapter extends FragmentStatePagerAdapter {
     private LinkedHashMap<String, Callable<Fragment>> fragmentGeneratorMap = new LinkedHashMap<>();
 
     public static MainViewPagerAdapter getInstance(FragmentManager fragmentManager) {
+        // TODO(mebjas): for thread safety add lock
         if (instance == null) {
             instance = new MainViewPagerAdapter(fragmentManager);
         }
@@ -33,7 +33,7 @@ public class MainViewPagerAdapter extends FragmentStatePagerAdapter {
         super(fragmentManager);
 
         fragmentGeneratorMap.put("Result", ResultFragment::create);
-        fragmentGeneratorMap.put("Main", MainFragment::create);
+        fragmentGeneratorMap.put("Main", BenchmarkFragment::create);
         fragmentGeneratorMap.put("API Probe", ApiProbeFragment::create);
     }
 
@@ -60,7 +60,6 @@ public class MainViewPagerAdapter extends FragmentStatePagerAdapter {
         return fragmentGeneratorMap.size();
     }
 
-    @Nullable
     @Override
     public CharSequence getPageTitle(int position) {
         assert position > 0;

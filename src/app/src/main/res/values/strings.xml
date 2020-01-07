@@ -2,5 +2,8 @@
     <string name="app_name">Camera2 Benchmarking</string>
     <string name="request_permission">This sample needs camera permission.</string>
     <string name="api_probe_fragment_title">Camera2 API Probe (Basic)</string>
-    <string name="result_fragment_title">Benchmarking result</string>
+    <string name="result_fragment_title">Benchmarking Result</string>
+    <string name="result_fragment_subtitle_na">Result not available</string>
+    <string name="result_fragment_subtitle_in_progress">Benchmarking in progress</string>
+    <string name="result_fragment_subtitle_finished">Benchmarking finished</string>
 </resources>

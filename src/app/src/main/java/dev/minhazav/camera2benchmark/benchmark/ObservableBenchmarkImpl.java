@@ -3,18 +3,18 @@ package dev.minhazav.camera2benchmark.benchmark;
 import java.util.LinkedList;
 import java.util.List;
 
-public class ObservableBenchmarkResult implements ObservableBenchmark {
+public final class ObservableBenchmarkImpl implements ObservableBenchmark {
 
-    private static ObservableBenchmarkResult instance;
+    private static ObservableBenchmarkImpl instance;
 
     private List<BenchmarkResultObserver> observers = new LinkedList<>();
 
-    private ObservableBenchmarkResult() {}
+    private ObservableBenchmarkImpl() {}
 
-    public static ObservableBenchmarkResult getInstance() {
+    public static ObservableBenchmarkImpl getInstance() {
         // TODO(mebjas): for thread safety add lock
         if (instance == null) {
-            instance = new ObservableBenchmarkResult();
+            instance = new ObservableBenchmarkImpl();
         }
 
         return instance;
@@ -35,10 +35,10 @@ public class ObservableBenchmarkResult implements ObservableBenchmark {
     }
 
     @Override
-    public void notify(int progress, BenchmarkResult benchmarkResult) {
+    public void notify(BenchmarkResult benchmarkResult) {
         // TODO(mebjas): synchronisation issue?
         for (BenchmarkResultObserver observer : observers) {
-            observer.onBenchmarkProgress(progress, benchmarkResult);
+            observer.onBenchmarkProgress(benchmarkResult);
         }
     }
 }
