@@ -56,6 +56,24 @@ public class CameraCharecteristicsRetriever {
         return result;
     }
 
+    public ArrayList<String> getColorSceneMode(CameraFacing cameraFacing) {
+        ArrayList<String> result = new ArrayList<>();
+        CameraCharacteristics cameraCharacteristics = getCameraCharecteristics(cameraFacing);
+        if (cameraCharacteristics == null) {
+            return result;
+        }
+
+        int[] modes = cameraCharacteristics.get(
+                CameraCharacteristics.CONTROL_AVAILABLE_SCENE_MODES);
+        for (int mode : modes) {
+            String modeName = Camera2SupportSceneModeMapping.getSceneMode(mode);
+            if (modeName != null) {
+                result.add(modeName);
+            }
+        }
+        return result;
+    }
+
     @Nullable
     private CameraCharacteristics getCameraCharecteristics(CameraFacing cameraFacing) {
         try {
@@ -127,6 +145,34 @@ public class CameraCharecteristicsRetriever {
 
         @Nullable
         public static String getSupportLevel(int key) {
+            return map.get(key);
+        }
+    }
+
+    private static class Camera2SupportSceneModeMapping {
+        private static Map<Integer, String> map = new HashMap<Integer, String>() {{
+            put(CameraMetadata.CONTROL_SCENE_MODE_DISABLED, "DISABLED");
+            put(CameraMetadata.CONTROL_SCENE_MODE_FACE_PRIORITY, "FACE_PRIORITY");
+            put(CameraMetadata.CONTROL_SCENE_MODE_ACTION, "ACTION");
+            put(CameraMetadata.CONTROL_SCENE_MODE_PORTRAIT, "PORTRAIT");
+            put(CameraMetadata.CONTROL_SCENE_MODE_LANDSCAPE, "LANDSCAPE");
+            put(CameraMetadata.CONTROL_SCENE_MODE_NIGHT, "NIGHT");
+            put(CameraMetadata.CONTROL_SCENE_MODE_NIGHT_PORTRAIT, "NIGHT PORTRAIT");
+            put(CameraMetadata.CONTROL_SCENE_MODE_THEATRE, "THEATRE");
+            put(CameraMetadata.CONTROL_SCENE_MODE_BEACH, "BEACH");
+            put(CameraMetadata.CONTROL_SCENE_MODE_SNOW, "SNOW");
+            put(CameraMetadata.CONTROL_SCENE_MODE_SUNSET, "SUNSET");
+            put(CameraMetadata.CONTROL_SCENE_MODE_STEADYPHOTO, "STEADT PHOTO");
+            put(CameraMetadata.CONTROL_SCENE_MODE_FIREWORKS, "FIREWORKS");
+            put(CameraMetadata.CONTROL_SCENE_MODE_SPORTS, "SPORTS");
+            put(CameraMetadata.CONTROL_SCENE_MODE_PARTY, "PARTY");
+            put(CameraMetadata.CONTROL_SCENE_MODE_CANDLELIGHT, "CANDLELIGHT");
+            put(CameraMetadata.CONTROL_SCENE_MODE_BARCODE, "BARCODE");
+            put(CameraMetadata.CONTROL_SCENE_MODE_HDR, "HDR");
+        }};
+
+        @Nullable
+        public static String getSceneMode(int key) {
             return map.get(key);
         }
     }

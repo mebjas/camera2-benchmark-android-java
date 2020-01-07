@@ -71,7 +71,27 @@ public class ApiProbeFragment extends Fragment {
         if (availableEffectsBackCam.isEmpty()) {
             addProbeResultToUi("No effect found");
         } else {
-            addProbeResultToUi(availableEffectsBackCam);
+            addProbeResultToUi(availableEffectsFrontCam);
+        }
+
+        // Back camera available effects
+        List<String> availableSceneModesBackCamera = cameraCharecteristicsRetriever
+                .getColorSceneMode(BACK_CAMERA);
+        addProbeHeaderToUi("BACK CAMERA AVAILABLE SCENE MODES");
+        if (availableEffectsBackCam.isEmpty()) {
+            addProbeResultToUi("No modes found");
+        } else {
+            addProbeResultToUi(availableSceneModesBackCamera);
+        }
+
+        // Back camera available effects
+        List<String> availableSceneModesFrontCamera = cameraCharecteristicsRetriever
+                .getColorSceneMode(FRONT_CAMERA);
+        addProbeHeaderToUi("FRONT CAMERA AVAILABLE SCENE MODES");
+        if (availableEffectsBackCam.isEmpty()) {
+            addProbeResultToUi("No modes found");
+        } else {
+            addProbeResultToUi(availableSceneModesFrontCamera);
         }
     }
 
