@@ -44,6 +44,12 @@ public class ApiProbeFragment extends Fragment {
         loadData(cameraManager);
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+        clearProbeResults();
+    }
+
     private void loadData(CameraManager cameraManager) {
         CameraCharecteristicsRetriever cameraCharecteristicsRetriever
                 = new CameraCharecteristicsRetriever(cameraManager);
@@ -93,6 +99,10 @@ public class ApiProbeFragment extends Fragment {
         } else {
             addProbeResultToUi(availableSceneModesFrontCamera);
         }
+    }
+
+    private void clearProbeResults() {
+        probeLogs.setText("");
     }
 
     private void addProbeResultToUi(List<String> messages) {
